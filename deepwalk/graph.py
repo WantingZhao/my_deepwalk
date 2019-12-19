@@ -18,6 +18,7 @@ from itertools import product,permutations
 from scipy.io import loadmat
 from scipy.sparse import issparse
 
+
 logger = logging.getLogger("deepwalk")
 
 
@@ -180,74 +181,19 @@ def grouper(n, iterable, padvalue=None):
     "grouper(3, 'abcdefg', 'x') --> ('a','b','c'), ('d','e','f'), ('g','x','x')"
     return zip_longest(*[iter(iterable)]*n, fillvalue=padvalue)
 
-def parse_adjacencylist(f):
-  adjlist = []
-  for l in f:
-    if l and l[0] != "#":
-      introw = [int(x) for x in l.strip().split()]
-      row = [introw[0]]
-      row.extend(set(sorted(introw[1:])))
-      adjlist.extend([row])
-  
-  return adjlist
 
-def parse_adjacencylist_unchecked(f):
-  adjlist = []
-  for l in f:
-    if l and l[0] != "#":
-      adjlist.extend([[int(x) for x in l.strip().split()]])
-  
-  return adjlist
+def load_edgelist(adj_indices, undirected=True):
 
-def load_adjacencylist(file_, undirected=False, chunksize=10000, unchecked=True):
-
-  if unchecked:
-    parse_func = parse_adjacencylist_unchecked
-    convert_func = from_adjlist_unchecked
-  else:
-    parse_func = parse_adjacencylist
-    convert_func = from_adjlist
-
-  adjlist = []
-
-  t0 = time()
-  
-  total = 0 
-  with open(file_) as f:
-    for idx, adj_chunk in enumerate(map(parse_func, grouper(int(chunksize), f))):
-      adjlist.extend(adj_chunk)
-      total += len(adj_chunk)
-  
-  t1 = time()
-
-  logger.info('Parsed {} edges with {} chunks in {}s'.format(total, idx, t1-t0))
-
-  t0 = time()
-  G = convert_func(adjlist)
-  t1 = time()
-
-  logger.info('Converted edges to graph in {}s'.format(t1-t0))
-
-  if undirected:
-    t0 = time()
-    G = G.make_undirected()
-    t1 = time()
-    logger.info('Made graph undirected in {}s'.format(t1-t0))
-
-  return G 
-
-
-def load_edgelist(file_, undirected=True):
   G = Graph()
-  with open(file_) as f:
-    for l in f:
-      x, y = l.strip().split()[:2]
+  for adj in adj_indices:
+    for edge in adj:
+      x, y = edge[0], edge[1]
       x = int(x)
       y = int(y)
       G[x].append(y)
       if undirected:
         G[y].append(x)
-  
+
   G.make_consistent()
   return G
 
