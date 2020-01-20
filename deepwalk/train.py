@@ -59,6 +59,9 @@ def deepwalk_get_feature(args, adj_indices,result_path):
     G = graph.load_edgelist(adj_indices, undirected=args.undirected)
 
     print(G)
+    if len(G)<10:
+        print('输出随机游走点太少')
+        return []
     print("Number of nodes: {}".format(len(G.nodes())))
 
     num_walks = len(G.nodes()) * args.number_walks
@@ -111,23 +114,27 @@ def process(args):
                   + (',window-size=%d' % args.window_size)
   dataset_str = '../../my_mixhop/data/ind.' + args.dataset
 
-  num_nodes, edge_sets, metapaths, metapaths_name, train_idx, valid_idx, test_idx, adj_indices, adj_values, allx, ally = common_load_data(dataset_str)
-  model = deepwalk_get_feature(args,adj_indices,result_path)
+  result=''
+  for per_class in [200]:
+      num_nodes, edge_sets, metapaths, metapaths_name, train_idx, valid_idx, test_idx, adj_indices, adj_values, allx, ally = common_load_data(
+          dataset_str,training_per_class=per_class)
+      model = deepwalk_get_feature(args, adj_indices, result_path)
 
-  train_X = model[[str(idx) for idx in train_idx]]
-  train_y = [ np.argmax(y) for y in ally[train_idx] ]
-  test_X = model[[str(idx) for idx in test_idx]]
-  test_y = [ np.argmax(y) for y in ally[test_idx]]
+      train_X = model[[str(idx) for idx in train_idx]]
+      train_y = [np.argmax(y) for y in ally[train_idx]]
+      test_X = model[[str(idx) for idx in test_idx]]
+      test_y = [np.argmax(y) for y in ally[test_idx]]
+      np.save('deepwalk_show.npy',test_X)
 
-  lr = LogisticRegression()  # 初始化LogisticRegression
-  lr.fit(train_X, train_y)  # 使用训练集对测试集进行训练
-  lr_y_predit = lr.predict(test_X)  # 使用逻辑回归函数对测试集进行预测
-  acc =lr.score(test_X, test_y)
-  print('Accuracy of LR Classifier:%f' % acc)  # 使得逻辑回归模型自带的评分函数score获得模型在测试集上的准确性结果
+      lr = LogisticRegression()  # 初始化LogisticRegression
+      lr.fit(train_X, train_y)  # 使用训练集对测试集进行训练
+      lr_y_predit = lr.predict(test_X)  # 使用逻辑回归函数对测试集进行预测
+      acc = lr.score(test_X, test_y)
+      result+='Accuracy of LR Classifier%d training per class: %f\n' % (per_class,acc)
+  print(result)  # 使得逻辑回归模型自带的评分函数score获得模型在测试集上的准确性结果
 
-
-  with open(result_path+'.acc','w') as w:
-      w.write('Accuracy of LR Classifier: %f\n' % acc)
+  with open(result_path + '.acc', 'w') as w:
+      w.write(result)
 
 
 
